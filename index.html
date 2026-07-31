@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Test Project - Quiz App</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --background: #f3f4f6;
+            --surface: #ffffff;
+            --text: #1f2937;
+            --success: #10b981;
+            --error: #ef4444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--background);
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .quiz-container {
+            background: var(--surface);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            width: 100%;
+            max-width: 500px;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            text-align: center;
+            color: var(--primary);
+        }
+
+        .question-box {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .options-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .option-btn {
+            background-color: var(--surface);
+            border: 2px solid #e5e7eb;
+            padding: 14px;
+            border-radius: 8px;
+            text-align: left;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .option-btn:hover:not([disabled]) {
+            background-color: #f9fafb;
+            border-color: var(--primary);
+        }
+
+        .option-btn.correct {
+            background-color: #ecfdf5;
+            border-color: var(--success);
+            color: #065f46;
+        }
+
+        .option-btn.wrong {
+            background-color: #fef2f2;
+            border-color: var(--error);
+            color: #991b1b;
+        }
+
+        .controls {
+            margin-top: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .next-btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            display: none;
+        }
+
+        .next-btn:hover {
+            opacity: 0.9;
+        }
+
+        .score-tracker {
+            font-weight: 500;
+        }
+
+        .results-screen {
+            text-align: center;
+            display: none;
+        }
+
+        .restart-btn {
+            background-color: var(--text);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            margin-top: 20px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="quiz-container">
+        <!-- Quiz Interface -->
+        <div id="quiz-ui">
+            <h1>Knowledge Quiz</h1>
+            <div class="question-box" id="question">Loading question...</div>
+            <div class="options-container" id="options">
+                <!-- Buttons injected dynamically -->
+            </div>
+            <div class="controls">
+                <span class="score-tracker">Score: <span id="score">0</span></span>
+                <button class="next-btn" id="next-button" onclick="nextQuestion()">Next Question</button>
+            </div>
+        </div>
+
+        <!-- End Result Screen -->
+        <div id="results-ui" class="results-screen">
+            <h1>Quiz Completed!</h1>
+            <p class="question-box">Your Final Score is: <span id="final-score">0</span> / <span id="total-questions">0</span></p>
+            <button class="restart-btn" onclick="resetQuiz()">Restart Test</button>
+        </div>
+    </div>
+
+    <script>
+        // Array containing quiz data
+        const quizData = [
+            {
+                question: "Which programming language adds interactivity to a web page?",
+                options: ["CSS", "HTML", "JavaScript", "SQL"],
+                correct: 2
+            },
+            {
+                question: "What does HTML stand for?",
+                options: [
+                    "Hyper Text Markup Language", 
+                    "High Tech Meaningful Language", 
+                    "Hyperlink Text Management Language", 
+                    "Home Tool Markup Language"
+                ],
+                correct: 0
+            },
+            {
+                question: "Which CSS property changes the text color?",
+                options: ["font-color", "text-style", "background-color", "color"],
+                correct: 3
+            }
+        ];
+
+        let currentQuestionIndex = 0;
+        let runningScore = 0;
+
+        const questionElement = document.getElementById("question");
+        const optionsContainer = document.getElementById("options");
+        const nextButton = document.getElementById("next-button");
+        const scoreTracker = document.getElementById("score");
+        const quizUi = document.getElementById("quiz-ui");
+        const resultsUi = document.getElementById("results-ui");
+        const finalScoreElement = document.getElementById("final-score");
+        const totalQuestionsElement = document.getElementById("total-questions");
+
+        function loadQuestion() {
+            resetState();
+            let currentQuiz = quizData[currentQuestionIndex];
+            questionElement.innerText = `${currentQuestionIndex + 1}. ${currentQuiz.question}`;
+
+            currentQuiz.options.forEach((option, index) => {
+                const button = document.createElement("button");
+                button.innerText = option;
+                button.classList.add("option-btn");
+                button.addEventListener("click", () => selectOption(button, index, currentQuiz.correct));
+                optionsContainer.appendChild(button);
+            });
+        }
+
+        function resetState() {
+            nextButton.style.display = "none";
+            optionsContainer.innerHTML = "";
+        }
+
+        function selectOption(selectedBtn, chosenIndex, correctIndex) {
+            const allButtons = optionsContainer.querySelectorAll(".option-btn");
+            
+            // Disable all buttons immediately after selection
+            allButtons.forEach(btn => btn.disabled = true);
+
+            if (chosenIndex === correctIndex) {
+                selectedBtn.classList.add("correct");
+                runningScore++;
+                scoreTracker.innerText = runningScore;
+            } else {
+                selectedBtn.classList.add("wrong");
+                allButtons[correctIndex].classList.add("correct"); // Show the right answer
+            }
+
+            nextButton.style.display = "block";
+        }
+
+        function nextQuestion() {
+            currentQuestionIndex++;
+            if (currentQuestionIndex < quizData.length) {
+                loadQuestion();
+            } else {
+                showResults();
+            }
+        }
+
+        function showResults() {
+            quizUi.style.display = "none";
+            resultsUi.style.display = "block";
+            finalScoreElement.innerText = runningScore;
+            totalQuestionsElement.innerText = quizData.length;
+        }
+
+        function resetQuiz() {
+            currentQuestionIndex = 0;
+            runningScore = 0;
+            scoreTracker.innerText = "0";
+            resultsUi.style.display = "none";
+            quizUi.style.display = "block";
+            loadQuestion();
+        }
+
+        // Initialize quiz execution
+        loadQuestion();
+    </script>
+</body>
+</html>
